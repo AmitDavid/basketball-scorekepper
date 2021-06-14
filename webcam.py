@@ -1,14 +1,15 @@
 import cv2
+import numpy as np
 
 VideoCapture = cv2.VideoCapture
 
 def load_camera(camera_index: int) -> VideoCapture:
     # initialize the camera
-    return VideoCapture(camera_index)  # 0 -> index of camera
+    return VideoCapture(camera_index)
 
 
-def capture_image(cam: VideoCapture):
-    captured, image = cam.read()
+def capture_frame(cam: VideoCapture) -> np.ndarray:
+    captured, frame = cam.read()
 
     # frame captured without any errors
     if captured:
@@ -17,4 +18,4 @@ def capture_image(cam: VideoCapture):
         # waitKey(0)
         # destroyWindow("cam-test")
 
-        return image
+        return frame

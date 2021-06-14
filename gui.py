@@ -11,6 +11,8 @@ import PySimpleGUI as sg
 # root.destroy()
 
 APP_NAME = 'basketball-scorekeeper'
+CAMERA_IP = 'http://192.168.1.164:4747/video?640x480'
+CAMERA_INDEX = 0
 
 TXT_PLAY = 'Play'
 TXT_PAUSE = 'Pause'
@@ -35,21 +37,34 @@ def runGUI(layout: list) -> None:
     seconds = 0
     minutes = 0
 
-    score_team_a = 0
-    score_team_a = 0
+    team_scores = [0, 0]
+    skip = 0
 
     # Event Loop to process 'events' and get the 'values' of the inputs
     while True:
         event, values = window.read(timeout=1)
 
         # Video handling
+        skip = (skip + 1) % 10
         if webcam_is_loaded:
             # Read image from capture device (camera)
-            frame = capture_image(cam)
+            frame_array = capture_frame(cam)
             # Convert the image to PNG Bytes
-            image_bytes = cv2.imencode('.png', frame)[1].tobytes()
+            image_bytes = cv2.imencode('.png', frame_array)[1].tobytes()
             # Show in app
             window["img_webcam"].update(data=image_bytes)
+
+            if model_is_loaded and skip == 0:
+                data = preprocess_frame(Image.fromarray(frame_array))
+                answer = trained_model.predict(data)
+                x = answer[0]
+                max_x = max(x)
+                if max_x == x[0]:
+                    print('0', x)
+                elif max_x == x[1]:
+                    print('1', x)
+                else:
+                    print('2', x)
 
         # Time handling
         new_time = datetime.datetime.now().second
@@ -64,6 +79,8 @@ def runGUI(layout: list) -> None:
         if event == "btn_play_pause":
             clock_is_running = not clock_is_running
             window["btn_reset_timer"].update(disabled=clock_is_running)
+            window["btn_reset_score"].update(disabled=clock_is_running)
+
             if clock_is_running:
                 window["btn_play_pause"].update(TXT_PAUSE)
             else:
@@ -72,16 +89,20 @@ def runGUI(layout: list) -> None:
         elif event == "btn_reset_timer":
             window["txt_time"].update(TXT_TIMER_START)
             window["btn_play_pause"].update(TXT_PLAY)
+            window["btn_reset_timer"].update(disabled=True)
 
             clock_is_running = False
             current_time = datetime.datetime.now().second
             seconds = 0
             minutes = 0
 
+        elif event == "btn_reset_score":
+            team_scores = [0, 0]
+            window["btn_reset_score"].update(disabled=True)
+
         # Webcam handling
         elif event == "btn_load_webcam":
-            cam = load_camera('http://192.168.1.164:4747/video?640x480')
-            window["btn_load_model"].update(disabled=False)
+            cam = VideoCapture(CAMERA_IP)
             window["btn_load_webcam"].update(disabled=True)
             webcam_is_loaded = True
 
@@ -108,7 +129,7 @@ if __name__ == '__main__':
     layout = [
         [
             sg.Button(key="btn_load_webcam", button_text=TXT_LOAD_WEBCAM),
-            sg.Button(key="btn_load_model", button_text=TXT_LOAD_MODEL, disabled=True)
+            sg.Button(key="btn_load_model", button_text=TXT_LOAD_MODEL)
         ],
         [sg.HorizontalSeparator()],
         [sg.Text(key="txt_time", text=TXT_TIMER_START, font=('Consolas', 30),
@@ -122,10 +143,10 @@ if __name__ == '__main__':
                     size=(9, 1), justification='center')
         ],
         [sg.HorizontalSeparator()],
-        [sg.Image(filename='', key='img_webcam', size=(640, 480))],
+        [sg.Image(key='img_webcam', filename='', size=(640, 480))],
         [sg.HorizontalSeparator()],
         [
-            sg.Button(key="btn_play_pause", button_text=TXT_PLAY),  # , disabled=True),
+            sg.Button(key="btn_play_pause", button_text=TXT_PLAY),
             sg.Button(key="btn_reset_timer", button_text=TXT_RESET_TIMER, disabled=True),
             sg.Button(key="btn_reset_score", button_text=TXT_RESET_SCORE, disabled=True),
             sg.Button(key="btn_settings", button_text=TXT_SETTINGS)
