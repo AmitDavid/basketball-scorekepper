@@ -1,9 +1,11 @@
 import datetime
-import cv2
-from webcam import *
-from model import *
 
 import PySimpleGUI as sg
+import cv2
+
+from model import *
+
+VideoCapture = cv2.VideoCapture
 
 # Get screen height to choose size for canvas
 # root = tk.Tk()
@@ -13,6 +15,8 @@ import PySimpleGUI as sg
 APP_NAME = 'basketball-scorekeeper'
 CAMERA_IP = 'http://192.168.1.164:4747/video?640x480'
 CAMERA_INDEX = 0
+
+SKIP = 10
 
 TXT_PLAY = 'Play'
 TXT_PAUSE = 'Pause'
@@ -28,6 +32,11 @@ TXT_START_SCORE = '0'
 def runGUI(layout: list) -> None:
     # Create the Window
     window = sg.Window(APP_NAME, layout)
+
+    cam = None
+    trained_model = None
+    previews_classification = 0
+    current_classification = 0
 
     webcam_is_loaded = False
     model_is_loaded = False
@@ -45,10 +54,10 @@ def runGUI(layout: list) -> None:
         event, values = window.read(timeout=1)
 
         # Video handling
-        skip = (skip + 1) % 10
+        skip = (skip + 1) % SKIP
         if webcam_is_loaded:
             # Read image from capture device (camera)
-            frame_array = capture_frame(cam)
+            frame_array = cam.read()[1]
             # Convert the image to PNG Bytes
             image_bytes = cv2.imencode('.png', frame_array)[1].tobytes()
             # Show in app
@@ -57,14 +66,12 @@ def runGUI(layout: list) -> None:
             if model_is_loaded and skip == 0:
                 data = preprocess_frame(Image.fromarray(frame_array))
                 answer = trained_model.predict(data)
-                x = answer[0]
-                max_x = max(x)
-                if max_x == x[0]:
-                    print('0', x)
-                elif max_x == x[1]:
-                    print('1', x)
-                else:
-                    print('2', x)
+                current_classification = max((v, i) for i, v in enumerate(answer[0]))[1]
+                print(current_classification)
+                if previews_classification == 2 and current_classification != 2:
+                    team_scores[0] += 2
+                    window["txt_team_a_score"].update(team_scores[0])
+                previews_classification = current_classification
 
         # Time handling
         new_time = datetime.datetime.now().second

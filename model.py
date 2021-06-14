@@ -35,11 +35,3 @@ def preprocess_frame(frame: np.ndarray) -> np.ndarray:
     data[0] = normalized_image_array
 
     return data
-
-
-def predict(model, data: np.ndarray) -> int:
-    # run the inference
-    prediction = model.predict(frame)
-
-    # Debug
-    print(prediction)
