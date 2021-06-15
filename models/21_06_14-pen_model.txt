@@ -1,0 +1,3 @@
+0 No-Ball
+1 Not-In-Basket
+2 In-Basket
