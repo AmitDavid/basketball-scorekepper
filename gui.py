@@ -41,7 +41,7 @@ ERROR_TXT_LOAD_WEBCAM_FAILED = "Failed to load camera!"
 ERROR_TXT_LOAD_MODEL_FAILED = "Failed to load model!"
 
 
-def runGUI(layout: list) -> None:
+def run_GUI(layout: list) -> None:
     # Create the Window
     window = sg.Window(APP_NAME, layout)
 
@@ -55,7 +55,7 @@ def runGUI(layout: list) -> None:
     board_clock = Clock()
 
     team_scores = [0, 0]
-    in_basket = 0
+    cycles_in_basket = 0
     skip = 0
 
     # Event Loop to process 'events' and get the 'values' of the inputs
@@ -73,17 +73,18 @@ def runGUI(layout: list) -> None:
                 curr_prediction = predict(frame_array, trained_model)
 
                 if curr_prediction == STATE_BALL_IN_BASKET:
-                    in_basket += 1
+                    cycles_in_basket += 1
                 else:
-                    if in_basket >= 2:
+                    if cycles_in_basket >= 2:
                         team_scores[0] += 2
                         window["txt_team_a_score"].update(team_scores[0])
-                    in_basket = 0
+                    cycles_in_basket = 0
 
         # Time handling. Expect update_time() to be called only if clock_is_running
         if clock_is_running and board_clock.update_time():
             window["txt_time"].update(board_clock.scoreboard_print())
 
+        # GUI buttons
         if event == "btn_play_pause":
             clock_is_running = not clock_is_running
             window["btn_reset_timer"].update(disabled=clock_is_running)
@@ -160,4 +161,4 @@ if __name__ == '__main__':
         ]
     ]
 
-    runGUI(layout)
+    run_GUI(layout)

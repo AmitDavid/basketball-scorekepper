@@ -12,7 +12,7 @@ def load_model(model_path: str) -> Sequential:
 
     try:
         # Load the model
-        return tensorflow.keras.models.load_model(f'models/{PEN_MODEL}')
+        return tensorflow.keras.models.load_model(f'models/{str}')
     except (ImportError, IOError) as e:
         return None
 
