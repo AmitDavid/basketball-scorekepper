@@ -10,9 +10,11 @@ def load_model(model_path):
     # Disable scientific notation for clarity
     np.set_printoptions(suppress=True)
 
-    # Load the model
-    return tensorflow.keras.models.load_model(f'models\\{PEN_MODEL}')
-
+    try:
+        # Load the model
+        return tensorflow.keras.models.load_model(f'models/{PEN_MODEL}')
+    except (ImportError, IOError) as e:
+        return None
 
 def preprocess_frame(frame: np.ndarray) -> np.ndarray:
     # Create the array of the right shape to feed into the keras model

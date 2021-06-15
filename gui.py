@@ -12,12 +12,22 @@ VideoCapture = cv2.VideoCapture
 # screensize = root.winfo_screenheight()
 # root.destroy()
 
+
+# ---- Params ---- #
 APP_NAME = 'basketball-scorekeeper'
-CAMERA_IP = 'http://192.168.1.164:4747/video?640x480'
-CAMERA_INDEX = 0
+CAMERAS_INDEXES = ('http://192.168.1.164:4747/video?640x480', 0)
+# CAMERA_IP = 'http://172.29.96.149:4747/video?640x480'
+# CAMERA_INDEX = 0
 
 SKIP = 10
 
+# ---- Machine States Enums ---- #
+STATE_NO_BALL = 0
+STATE_BALL_IN_FRAME = 1
+STATE_BALL_IN_BASKET = 2
+STATE_BALL_LEAVING_BASKET = 3
+
+# ---- Messages ---- #
 TXT_PLAY = 'Play'
 TXT_PAUSE = 'Pause'
 TXT_RESET_TIMER = 'Reset timer'
@@ -28,6 +38,10 @@ TXT_LOAD_WEBCAM = 'Load Webcam'
 TXT_TIMER_START = '00:00'
 TXT_START_SCORE = '0'
 
+# ---- Error Messages ---- #
+ERROR_TXT_LOAD_WEBCAM_FAILED = "Failed to load camera!"
+ERROR_TXT_LOAD_MODEL_FAILED = "Failed to load model!"
+
 
 def runGUI(layout: list) -> None:
     # Create the Window
@@ -36,6 +50,7 @@ def runGUI(layout: list) -> None:
     cam = None
     trained_model = None
     previews_classification = 0
+    previews_streak = 0
     current_classification = 0
 
     webcam_is_loaded = False
@@ -53,7 +68,8 @@ def runGUI(layout: list) -> None:
     while True:
         event, values = window.read(timeout=1)
 
-        # Video handling
+        # Video handling. We only predict one every {SKIP} frames,
+        # but still show every frame on the screen
         skip = (skip + 1) % SKIP
         if webcam_is_loaded:
             # Read image from capture device (camera)
@@ -68,10 +84,14 @@ def runGUI(layout: list) -> None:
                 answer = trained_model.predict(data)
                 current_classification = max((v, i) for i, v in enumerate(answer[0]))[1]
                 print(current_classification)
-                if previews_classification == 2 and current_classification != 2:
+                if previews_classification == 2 and current_classification != 2 and previews_streak == 1:
                     team_scores[0] += 2
                     window["txt_team_a_score"].update(team_scores[0])
                 previews_classification = current_classification
+                if previews_classification == current_classification:
+                    previews_streak += 1
+                else:
+                    previews_streak = 0
 
         # Time handling
         new_time = datetime.datetime.now().second
@@ -109,17 +129,24 @@ def runGUI(layout: list) -> None:
 
         # Webcam handling
         elif event == "btn_load_webcam":
-            cam = VideoCapture(CAMERA_IP)
-            window["btn_load_webcam"].update(disabled=True)
-            webcam_is_loaded = True
+            cam = VideoCapture(CAMERAS_INDEXES[0])
+            if cam.read()[0]:
+                window["btn_load_webcam"].update(disabled=True)
+                webcam_is_loaded = True
+            else:
+                sg.popup(ERROR_TXT_LOAD_WEBCAM_FAILED, background_color='firebrick')
+
 
         # Model handling
         elif event == "btn_load_model":
 
             trained_model = load_model(PEN_MODEL)
-            window["btn_play_pause"].update(disabled=False)
-            window["btn_load_model"].update(disabled=True)
-            model_is_loaded = True
+            if trained_model is not None:
+                window["btn_play_pause"].update(disabled=False)
+                window["btn_load_model"].update(disabled=True)
+                model_is_loaded = True
+            else:
+                sg.popup(ERROR_TXT_LOAD_MODEL_FAILED, background_color='firebrick')
 
         # Close the program
         elif event == sg.WIN_CLOSED:
