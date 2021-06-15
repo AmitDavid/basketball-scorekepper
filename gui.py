@@ -14,7 +14,6 @@ from webcam import *
 APP_NAME = 'basketball-scorekeeper'
 CAMERAS_INDEXES = ('http://192.168.1.164:4747/video?640x480', 0)
 # CAMERA_IP = 'http://172.29.96.149:4747/video?640x480'
-# CAMERA_INDEX = 0
 
 SKIP = 10
 

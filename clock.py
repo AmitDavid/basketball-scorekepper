@@ -1,14 +1,14 @@
-import datetime
+from datetime import datetime
 
 
 class Clock:
     def __init__(self):
-        self._current_time = datetime.datetime.now().second
+        self._current_time = datetime.now().second
         self._seconds = 0
         self._minutes = 0
 
     def update_time(self):
-        new_time = datetime.datetime.now().second
+        new_time = datetime.now().second
         if new_time != self._current_time:
             self._current_time = new_time
             self._seconds += 1

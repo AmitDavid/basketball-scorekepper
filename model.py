@@ -5,14 +5,14 @@ from tensorflow.python.keras.engine.sequential import Sequential
 PEN_MODEL = '21_06_14-pen_model.h5'
 
 
-def load_model(model_path: str) -> Sequential:
+def load_model(model_path: str) -> {Sequential, None}:
     import tensorflow.keras.models
     # Disable scientific notation for clarity
     np.set_printoptions(suppress=True)
 
     try:
         # Load the model
-        return tensorflow.keras.models.load_model(f'models/{str}')
+        return tensorflow.keras.models.load_model(f'models/{model_path}')
     except (ImportError, IOError) as e:
         return None
 

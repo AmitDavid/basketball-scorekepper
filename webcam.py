@@ -6,10 +6,10 @@ VideoCapture = cv2.VideoCapture
 
 def load_webcam(index=0) -> {VideoCapture, None}:
     cam = VideoCapture(index)
+
     try:
         if cam.read()[0]:
             return cam
-
     except (ValueError, IOError) as e:
         return None
 
