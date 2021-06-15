@@ -12,8 +12,13 @@ from webcam import *
 
 # ---- Params ---- #
 APP_NAME = 'basketball-scorekeeper'
-CAMERAS_INDEXES = ('http://192.168.1.164:4747/video?640x480', 0)
-# CAMERA_IP = 'http://172.29.96.149:4747/video?640x480'
+
+IPS = {
+    'Home':        'http://192.168.1.164:4747/video?640x480',
+    'HUJI_guests': 'http://172.29.96.149:4747/video?640x480',
+    'Ben':         'http://192.168.31.113:4747/video?640x480'
+}
+CAMERAS_INDEXES = (0, IPS['Ben'])
 
 SKIP = 10
 
@@ -24,6 +29,11 @@ STATE_BALL_MISSED_BASKET = 2
 STATE_BALL_UNDER_BASKET = 3
 STATE_NO_BALL = 4
 
+
+# ---- Teams Enums ---- #
+A = 0
+B = 1
+
 # ---- Messages ---- #
 TXT_PLAY = 'Play'
 TXT_PAUSE = 'Pause'
@@ -31,7 +41,8 @@ TXT_RESET_TIMER = 'Reset timer'
 TXT_RESET_SCORE = 'Reset score'
 TXT_SETTINGS = 'Settings'
 TXT_LOAD_MODEL = 'Load Model'
-TXT_LOAD_WEBCAM = 'Load Webcam'
+TXT_LOAD_WEBCAM_A = 'Load Webcam A'
+TXT_LOAD_WEBCAM_B = 'Load Webcam B'
 TXT_TIMER_START = '00:00'
 TXT_START_SCORE = '0'
 
@@ -44,10 +55,10 @@ def run_GUI(layout: list) -> None:
     # Create the Window
     window = sg.Window(APP_NAME, layout)
 
-    cam = None
+    cam = [None, None]
     trained_model = None
 
-    webcam_is_loaded = False
+    webcam_is_loaded = [False, False]
     model_is_loaded = False
 
     clock_is_running = False
@@ -64,9 +75,9 @@ def run_GUI(layout: list) -> None:
         # Video handling. We only predict one every {SKIP} frames,
         # but still show every frame on the screen
         skip = (skip + 1) % SKIP
-        if webcam_is_loaded:
-            frame_array, image_bytes = capture_frame(cam)
-            window["img_webcam"].update(data=image_bytes)
+        if webcam_is_loaded[A]:
+            frame_array, image_bytes = capture_frame(cam[A])
+            window["img_webcam_a"].update(data=image_bytes)
 
             if model_is_loaded and skip == 0:
                 curr_prediction = predict(frame_array, trained_model)
@@ -78,6 +89,10 @@ def run_GUI(layout: list) -> None:
                         team_scores[0] += 2
                         window["txt_team_a_score"].update(team_scores[0])
                     cycles_in_basket = 0
+
+        if webcam_is_loaded[B]:
+            frame_array, image_bytes = capture_frame(cam[B])
+            window["img_webcam_b"].update(data=image_bytes)
 
         # Time handling. Expect update_time() to be called only if clock_is_running
         if clock_is_running and board_clock.update_time():
@@ -103,11 +118,20 @@ def run_GUI(layout: list) -> None:
             team_scores = [0, 0]
 
         # Webcam handling
-        elif event == "btn_load_webcam":
-            cam = load_webcam(CAMERAS_INDEXES[1])
+        elif event == "btn_load_webcam_a":
+            cam[A] = load_webcam(CAMERAS_INDEXES[A])
             if cam is not None:
-                window["btn_load_webcam"].update(disabled=True)
-                webcam_is_loaded = True
+                window["btn_load_webcam_a"].update(disabled=True)
+                webcam_is_loaded[A] = True
+            else:
+                sg.popup(ERROR_TXT_LOAD_WEBCAM_FAILED, background_color='firebrick')
+
+        # Webcam handling
+        elif event == "btn_load_webcam_b":
+            cam[B] = load_webcam(CAMERAS_INDEXES[B])
+            if cam is not None:
+                window["btn_load_webcam_b"].update(disabled=True)
+                webcam_is_loaded[B] = True
             else:
                 sg.popup(ERROR_TXT_LOAD_WEBCAM_FAILED, background_color='firebrick')
 
@@ -135,22 +159,27 @@ if __name__ == '__main__':
 
     layout = [
         [
-            sg.Button(key="btn_load_webcam", button_text=TXT_LOAD_WEBCAM),
+            sg.Button(key="btn_load_webcam_a", button_text=TXT_LOAD_WEBCAM_A),
+            sg.Button(key="btn_load_webcam_b", button_text=TXT_LOAD_WEBCAM_B),
             sg.Button(key="btn_load_model", button_text=TXT_LOAD_MODEL)
         ],
         [sg.HorizontalSeparator()],
         [sg.Text(key="txt_time", text=TXT_TIMER_START, font=('Consolas', 30),
-                 size=(29, 1), justification='center')],
+                 size=(59, 1), justification='center')],
         [sg.HorizontalSeparator()],
         [
             sg.Text(key="txt_team_a_score", text=TXT_START_SCORE, font=('Consolas', 45),
-                    size=(9, 1), justification='center'),
+                    size=(19, 1), justification='center'),
             sg.VerticalSeparator(),
             sg.Text(key="txt_team_b_score", text=TXT_START_SCORE, font=('Consolas', 45),
-                    size=(9, 1), justification='center')
+                    size=(19, 1), justification='center')
         ],
         [sg.HorizontalSeparator()],
-        [sg.Image(key='img_webcam', filename='', size=(640, 480))],
+        [
+            sg.Image(key='img_webcam_a', filename='', size=(640, 480), background_color='gray15'),
+            # sg.VerticalSeparator(),
+            sg.Image(key='img_webcam_b', filename='', size=(640, 480), background_color='gray15')
+        ],
         [sg.HorizontalSeparator()],
         [
             sg.Button(key="btn_play_pause", button_text=TXT_PLAY),

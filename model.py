@@ -3,6 +3,7 @@ from PIL import Image, ImageOps
 from tensorflow.python.keras.engine.sequential import Sequential
 
 PEN_MODEL = '21_06_14-pen_model.h5'
+GREEN_BALL = '21_06_15-green_ball.h5'
 
 
 def load_model(model_path: str) -> {Sequential, None}:
@@ -12,7 +13,7 @@ def load_model(model_path: str) -> {Sequential, None}:
 
     try:
         # Load the model
-        return tensorflow.keras.models.load_model(f'models/{model_path}')
+        return tensorflow.keras.models.load_model(f'models/{GREEN_BALL}')
     except (ImportError, IOError) as e:
         return None
 
