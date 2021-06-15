@@ -1,12 +1,12 @@
 import numpy as np
 from PIL import Image, ImageOps
+from tensorflow.python.keras.engine.sequential import Sequential
 
 PEN_MODEL = '21_06_14-pen_model.h5'
 
 
-def load_model(model_path):
-    import tensorflow.keras
-
+def load_model(model_path: str) -> Sequential:
+    import tensorflow.keras.models
     # Disable scientific notation for clarity
     np.set_printoptions(suppress=True)
 
@@ -15,6 +15,7 @@ def load_model(model_path):
         return tensorflow.keras.models.load_model(f'models/{PEN_MODEL}')
     except (ImportError, IOError) as e:
         return None
+
 
 def preprocess_frame(frame: np.ndarray) -> np.ndarray:
     # Create the array of the right shape to feed into the keras model
@@ -37,3 +38,14 @@ def preprocess_frame(frame: np.ndarray) -> np.ndarray:
     data[0] = normalized_image_array
 
     return data
+
+
+def predict(frame_array: np.ndarray, trained_model: Sequential) -> int:
+    # Preprocess the image and convert array size
+    data = preprocess_frame(Image.fromarray(frame_array))
+
+    # Run model
+    answer = trained_model.predict(data)
+
+    # Return the index of the most likely prediction
+    return max((v, i) for i, v in enumerate(answer[0]))[1]

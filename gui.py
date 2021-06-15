@@ -1,11 +1,8 @@
-import datetime
-
 import PySimpleGUI as sg
-import cv2
 
+from clock import *
 from model import *
-
-VideoCapture = cv2.VideoCapture
+from webcam import *
 
 # Get screen height to choose size for canvas
 # root = tk.Tk()
@@ -22,10 +19,11 @@ CAMERAS_INDEXES = ('http://192.168.1.164:4747/video?640x480', 0)
 SKIP = 10
 
 # ---- Machine States Enums ---- #
-STATE_NO_BALL = 0
-STATE_BALL_IN_FRAME = 1
-STATE_BALL_IN_BASKET = 2
-STATE_BALL_LEAVING_BASKET = 3
+STATE_BALL_ABOVE_BASKET = 0
+STATE_BALL_IN_BASKET = 1
+STATE_BALL_MISSED_BASKET = 2
+STATE_BALL_UNDER_BASKET = 3
+STATE_NO_BALL = 4
 
 # ---- Messages ---- #
 TXT_PLAY = 'Play'
@@ -49,19 +47,15 @@ def runGUI(layout: list) -> None:
 
     cam = None
     trained_model = None
-    previews_classification = 0
-    previews_streak = 0
-    current_classification = 0
 
     webcam_is_loaded = False
     model_is_loaded = False
 
     clock_is_running = False
-    current_time = datetime.datetime.now().second
-    seconds = 0
-    minutes = 0
+    board_clock = Clock()
 
     team_scores = [0, 0]
+    in_basket = 0
     skip = 0
 
     # Event Loop to process 'events' and get the 'values' of the inputs
@@ -72,46 +66,29 @@ def runGUI(layout: list) -> None:
         # but still show every frame on the screen
         skip = (skip + 1) % SKIP
         if webcam_is_loaded:
-            # Read image from capture device (camera)
-            frame_array = cam.read()[1]
-            # Convert the image to PNG Bytes
-            image_bytes = cv2.imencode('.png', frame_array)[1].tobytes()
-            # Show in app
+            frame_array, image_bytes = capture_frame(cam)
             window["img_webcam"].update(data=image_bytes)
 
             if model_is_loaded and skip == 0:
-                data = preprocess_frame(Image.fromarray(frame_array))
-                answer = trained_model.predict(data)
-                current_classification = max((v, i) for i, v in enumerate(answer[0]))[1]
-                print(current_classification)
-                if previews_classification == 2 and current_classification != 2 and previews_streak == 1:
-                    team_scores[0] += 2
-                    window["txt_team_a_score"].update(team_scores[0])
-                previews_classification = current_classification
-                if previews_classification == current_classification:
-                    previews_streak += 1
-                else:
-                    previews_streak = 0
+                curr_prediction = predict(frame_array, trained_model)
 
-        # Time handling
-        new_time = datetime.datetime.now().second
-        if clock_is_running and new_time != current_time:
-            current_time = new_time
-            seconds += 1
-            if seconds == 60:
-                seconds = 0
-                minutes += 1
-            window["txt_time"].update(f'{str(minutes).zfill(2)}:{str(seconds).zfill(2)}')
+                if curr_prediction == STATE_BALL_IN_BASKET:
+                    in_basket += 1
+                else:
+                    if in_basket >= 2:
+                        team_scores[0] += 2
+                        window["txt_team_a_score"].update(team_scores[0])
+                    in_basket = 0
+
+        # Time handling. Expect update_time() to be called only if clock_is_running
+        if clock_is_running and board_clock.update_time():
+            window["txt_time"].update(board_clock.scoreboard_print())
 
         if event == "btn_play_pause":
             clock_is_running = not clock_is_running
             window["btn_reset_timer"].update(disabled=clock_is_running)
             window["btn_reset_score"].update(disabled=clock_is_running)
-
-            if clock_is_running:
-                window["btn_play_pause"].update(TXT_PAUSE)
-            else:
-                window["btn_play_pause"].update(TXT_PLAY)
+            window["btn_play_pause"].update(TXT_PAUSE if clock_is_running else TXT_PLAY)
 
         elif event == "btn_reset_timer":
             window["txt_time"].update(TXT_TIMER_START)
@@ -119,27 +96,23 @@ def runGUI(layout: list) -> None:
             window["btn_reset_timer"].update(disabled=True)
 
             clock_is_running = False
-            current_time = datetime.datetime.now().second
-            seconds = 0
-            minutes = 0
+            board_clock = Clock()
 
         elif event == "btn_reset_score":
-            team_scores = [0, 0]
             window["btn_reset_score"].update(disabled=True)
+            team_scores = [0, 0]
 
         # Webcam handling
         elif event == "btn_load_webcam":
-            cam = VideoCapture(CAMERAS_INDEXES[0])
-            if cam.read()[0]:
+            cam = load_webcam(CAMERAS_INDEXES[1])
+            if cam is not None:
                 window["btn_load_webcam"].update(disabled=True)
                 webcam_is_loaded = True
             else:
                 sg.popup(ERROR_TXT_LOAD_WEBCAM_FAILED, background_color='firebrick')
 
-
         # Model handling
         elif event == "btn_load_model":
-
             trained_model = load_model(PEN_MODEL)
             if trained_model is not None:
                 window["btn_play_pause"].update(disabled=False)
