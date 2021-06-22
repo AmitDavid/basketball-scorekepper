@@ -7,6 +7,13 @@ from tensorflow.python.keras.engine.sequential import Sequential
 
 from webcam import Webcam
 
+# ---- Machine States Enums ---- #
+STATE_BALL_ABOVE_BASKET = 0
+STATE_BALL_IN_BASKET = 1
+STATE_BALL_MISSED_BASKET = 2
+STATE_BALL_UNDER_BASKET = 3
+STATE_NO_BALL = 4
+
 # Disable scientific notation for clarity
 np.set_printoptions(suppress=True)
 
@@ -14,22 +21,53 @@ PEN_MODEL = '21_06_14-pen_model.h5'
 GREEN_BALL = '21_06_15-green_ball.h5'
 
 
-class Model:
-    def __init__(self, model_name: str, webcam: Webcam):
+def load_model(model_path: str = GREEN_BALL) -> {Sequential, None}:
+    try:
+        return tensorflow.keras.models.load_model(f'models/{model_path}')
+    except (ImportError, IOError) as e:
+        return None
+
+
+class BasketModel:
+    def __init__(self, trained_model: Sequential, webcam: Webcam):
         self._works = False
+        self._mirror_image = False
+        self._cycles_in_basket = 0
+
         self._webcam = webcam
+        self._trained_model = trained_model
 
         self._score_buffer = 0
         self._score_buffer_lock = Lock()
 
         try:
             # Load the model
-            self._model = tensorflow.keras.models.load_model(f'models/{GREEN_BALL}')
-            self._thread = Thread(target=self._predict, daemon=True)
+            self._thread = Thread(target=self._update, daemon=True)
             self._thread.start()
             self._works = True
         except (ImportError, IOError, RuntimeError) as e:
             pass
+
+    def _update(self):
+        curr_prediction = self._predict()
+
+        if curr_prediction == STATE_BALL_IN_BASKET:
+            self._cycles_in_basket += 1
+        else:
+            if self._cycles_in_basket >= 2:
+                self._score_buffer += 2
+            self._cycles_in_basket = 0
+
+    def _predict(self) -> int:
+        while True:
+            # Preprocess the image and convert array size
+            data = self._preprocess_frame(Image.fromarray(self._webcam.get_frame_array()))
+
+            # Run model
+            answer = self._trained_model.predict(data)
+
+            # Return the index of the most likely prediction
+            return max((v, i) for i, v in enumerate(answer[0]))[1]
 
     @staticmethod
     def _preprocess_frame(frame: np.ndarray) -> np.ndarray:
@@ -54,18 +92,9 @@ class Model:
 
         return data
 
-    def _predict(self, frame_array: np.ndarray, trained_model: Sequential) -> int:
-        while True:
-            # Preprocess the image and convert array size
-            data = self._preprocess_frame(Image.fromarray(self._webcam.get_frame_array()))
-
-            # Run model
-            answer = trained_model.predict(data)
-
-            # Return the index of the most likely prediction
-            return max((v, i) for i, v in enumerate(answer[0]))[1]
-
-    def get_score_buffer(self):
+    def get_score_buffer(self) -> int:
         while self._score_buffer_lock.locked():
             pass
-        return self._score_buffer
+        temp_score_buffer = self._score_buffer
+        self._score_buffer = 0
+        return temp_score_buffer

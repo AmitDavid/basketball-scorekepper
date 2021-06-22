@@ -1,7 +1,8 @@
 import PySimpleGUI as sg
 
-from clock import *
-from webcam import *
+from basketmodel import BasketModel, load_model
+from clock import Clock
+from webcam import Webcam
 
 # ---- Params ---- #
 APP_NAME = 'basketball-scorekeeper'
@@ -14,13 +15,6 @@ CAMERAS = {
     'Ben': 'http://192.168.31.113:4747/video?640x480'
 }
 SELECTED_CAMERAS = (CAMERAS['local_0'], CAMERAS['Amit'])
-
-# ---- Machine States Enums ---- #
-STATE_BALL_ABOVE_BASKET = 0
-STATE_BALL_IN_BASKET = 1
-STATE_BALL_MISSED_BASKET = 2
-STATE_BALL_UNDER_BASKET = 3
-STATE_NO_BALL = 4
 
 # ---- Teams Enums ---- #
 A = 0
@@ -48,17 +42,17 @@ def run_gui(layout: list) -> None:
     # Create the Window
     window = sg.Window(APP_NAME, layout)
 
-    cam = [None, None]
+    camera = [None, None]
     trained_model = None
 
     webcam_is_loaded = [False, False]
     model_is_loaded = False
+    model = [None, None]
 
     clock_is_running = False
     board_clock = Clock()
 
     team_scores = [0, 0]
-    cycles_in_basket = [0, 0]
 
     # Event Loop to process 'events' and get the 'values' of the inputs
     while True:
@@ -67,18 +61,11 @@ def run_gui(layout: list) -> None:
         # Video handling.
         for team in TEAMS:
             if webcam_is_loaded[team]:
-                window[f"img_webcam_{team}"].update(data=cam[team].get_image_bytes())
-
-                if model_is_loaded:
-                    curr_prediction = predict(cam[team].get_frame_array(), trained_model)
-
-                    if curr_prediction == STATE_BALL_IN_BASKET:
-                        cycles_in_basket += 1
-                    else:
-                        if cycles_in_basket[team] >= 2:
-                            team_scores[team] += 2
-                            window[f"txt_team_score_{team}"].update(team_scores[0])
-                        cycles_in_basket[team] = 0
+                window[f"img_webcam_{team}"].update(data=camera[team].get_image_bytes())
+                score_buffer = model[team].get_score_buffer()
+                if score_buffer:
+                    team_scores[team] += score_buffer
+                    window[f"txt_team_score_{team}"].update(team_scores[team])
 
         # Time handling. Expect update_time() to be called only if clock_is_running
         if clock_is_running and board_clock.update_time():
@@ -104,20 +91,13 @@ def run_gui(layout: list) -> None:
             team_scores = [0, 0]
 
         # Webcam handling
-        elif event == f"btn_load_webcam_{A}":
-            cam[A] = Webcam(SELECTED_CAMERAS[A])
-            if cam[A].is_webcam_works():
-                window[f"btn_load_webcam_{A}"].update(disabled=True)
-                webcam_is_loaded[A] = True
-            else:
-                sg.popup(ERROR_TXT_LOAD_WEBCAM_FAILED, background_color='firebrick')
-
-        # Webcam handling
-        elif event == f"btn_load_webcam_{B}":
-            cam[B] = Webcam(SELECTED_CAMERAS[B])
-            if cam[B].is_webcam_works():
-                window[f"btn_load_webcam_{B}"].update(disabled=True)
-                webcam_is_loaded[B] = True
+        elif event in {f"btn_load_webcam_{A}", f"btn_load_webcam_{B}"}:
+            team = int(event[-1])
+            camera[team] = Webcam(SELECTED_CAMERAS[team])
+            if camera[team].is_webcam_works():
+                window[f"btn_load_webcam_{team}"].update(disabled=True)
+                webcam_is_loaded[team] = True
+                model[team] = BasketModel(trained_model, camera[team])
             else:
                 sg.popup(ERROR_TXT_LOAD_WEBCAM_FAILED, background_color='firebrick')
 
@@ -125,6 +105,8 @@ def run_gui(layout: list) -> None:
         elif event == "btn_load_model":
             trained_model = load_model()
             if trained_model is not None:
+                window[f"btn_load_webcam_{A}"].update(disabled=False)
+                window[f"btn_load_webcam_{B}"].update(disabled=False)
                 window["btn_play_pause"].update(disabled=False)
                 window["btn_load_model"].update(disabled=True)
                 model_is_loaded = True

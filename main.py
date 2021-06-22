@@ -7,9 +7,9 @@ if __name__ == '__main__':
 
     layout = [
         [
-            sg.Button(key=f"btn_load_webcam_{A}", button_text=TXT_LOAD_WEBCAM_A),
-            sg.Button(key=f"btn_load_webcam_{B}", button_text=TXT_LOAD_WEBCAM_B),
-            sg.Button(key="btn_load_model", button_text=TXT_LOAD_MODEL)
+            sg.Button(key="btn_load_model", button_text=TXT_LOAD_MODEL),
+            sg.Button(key=f"btn_load_webcam_{A}", button_text=TXT_LOAD_WEBCAM_A, disabled=True),
+            sg.Button(key=f"btn_load_webcam_{B}", button_text=TXT_LOAD_WEBCAM_B, disabled=True)
         ],
         [sg.HorizontalSeparator()],
         [sg.Text(key="txt_time", text=TXT_TIMER_START, font=('Consolas', 30),
