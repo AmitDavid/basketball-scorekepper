@@ -1,22 +1,19 @@
 import PySimpleGUI as sg
 
 from clock import *
-from model import *
 from webcam import *
 
 # ---- Params ---- #
 APP_NAME = 'basketball-scorekeeper'
 
-CAMERAS_INDEXES = {
+CAMERAS = {
     'local_0': 0,
     'local_1': 1,
     'Amit': 'http://192.168.1.164:4747/video?640x480',
     'HUJI_guests': 'http://172.29.96.149:4747/video?640x480',
     'Ben': 'http://192.168.31.113:4747/video?640x480'
 }
-SELECTED_CAMERAS = (CAMERAS_INDEXES['local_0'], CAMERAS_INDEXES['Amit'])
-
-SKIP = 10
+SELECTED_CAMERAS = (CAMERAS['local_0'], CAMERAS['Amit'])
 
 # ---- Machine States Enums ---- #
 STATE_BALL_ABOVE_BASKET = 0
@@ -61,31 +58,27 @@ def run_gui(layout: list) -> None:
     board_clock = Clock()
 
     team_scores = [0, 0]
-    cycles_in_basket = 0
-    skip = 0
+    cycles_in_basket = [0, 0]
 
     # Event Loop to process 'events' and get the 'values' of the inputs
     while True:
-        event, values = window.read(timeout=1)
+        event, values = window.read(timeout=10)
 
-        # Video handling. We only predict one every {SKIP} frames,
-        # but still show every frame on the screen
-        skip = (skip + 1) % SKIP
+        # Video handling.
         for team in TEAMS:
             if webcam_is_loaded[team]:
-                frame_array, image_bytes = cam[team].get_frame()
-                window[f"img_webcam_{team}"].update(data=image_bytes)
+                window[f"img_webcam_{team}"].update(data=cam[team].get_image_bytes())
 
-                if model_is_loaded and skip == 0:
-                    curr_prediction = predict(frame_array, trained_model)
+                if model_is_loaded:
+                    curr_prediction = predict(cam[team].get_frame_array(), trained_model)
 
                     if curr_prediction == STATE_BALL_IN_BASKET:
                         cycles_in_basket += 1
                     else:
-                        if cycles_in_basket >= 2:
+                        if cycles_in_basket[team] >= 2:
                             team_scores[team] += 2
                             window[f"txt_team_score_{team}"].update(team_scores[0])
-                        cycles_in_basket = 0
+                        cycles_in_basket[team] = 0
 
         # Time handling. Expect update_time() to be called only if clock_is_running
         if clock_is_running and board_clock.update_time():
@@ -130,7 +123,7 @@ def run_gui(layout: list) -> None:
 
         # Model handling
         elif event == "btn_load_model":
-            trained_model = load_model(PEN_MODEL)
+            trained_model = load_model()
             if trained_model is not None:
                 window["btn_play_pause"].update(disabled=False)
                 window["btn_load_model"].update(disabled=True)
