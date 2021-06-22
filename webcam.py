@@ -17,7 +17,7 @@ class Webcam:
         try:
             if self._cam.read()[0]:
                 self._works = True
-                self._thread = Thread(target=self.update, args=())
+                self._thread = Thread(target=self._update, args=())
                 self._thread.daemon = True
                 self._thread.start()
             else:
@@ -25,7 +25,7 @@ class Webcam:
         except (ValueError, IOError) as e:
             self._works = False
 
-    def update(self):
+    def _update(self):
         # Read the next frame from the stream in a different thread
         while True:
             # Read image from capture device (camera)
