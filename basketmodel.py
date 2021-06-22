@@ -1,3 +1,5 @@
+import threading
+import time
 from threading import Thread, Lock
 
 import numpy as np
@@ -49,28 +51,34 @@ class BasketModel:
             pass
 
     def _update(self):
-        curr_prediction = self._predict()
+        # Wait for webcam to lead
+        time.sleep(1)
 
-        if curr_prediction == STATE_BALL_IN_BASKET:
-            self._cycles_in_basket += 1
-        else:
-            if self._cycles_in_basket >= 2:
-                self._score_buffer += 2
-            self._cycles_in_basket = 0
+        while True:
+            curr_prediction = self._predict()
+
+            if curr_prediction == STATE_BALL_IN_BASKET:
+                self._cycles_in_basket += 1
+            else:
+                if self._cycles_in_basket >= 2:
+                    self._score_buffer_lock.acquire()
+                    self._score_buffer += 2
+                    self._score_buffer_lock.release()
+                self._cycles_in_basket = 0
 
     def _predict(self) -> int:
-        while True:
-            # Preprocess the image and convert array size
-            data = self._preprocess_frame(Image.fromarray(self._webcam.get_frame_array()))
+        # Preprocess the image and convert array size
+        x = self._webcam.get_frame_array()
+        y = Image.fromarray(x)
+        data = self._preprocess_frame(y)
 
-            # Run model
-            answer = self._trained_model.predict(data)
-
-            # Return the index of the most likely prediction
-            return max((v, i) for i, v in enumerate(answer[0]))[1]
+        # Run model
+        answer = self._trained_model.predict(data)
+        # Return the index of the most likely prediction
+        return max((v, i) for i, v in enumerate(answer[0]))[1]
 
     @staticmethod
-    def _preprocess_frame(frame: np.ndarray) -> np.ndarray:
+    def _preprocess_frame(frame: Image) -> np.ndarray:
         # Create the array of the right shape to feed into the keras model
         # The 'length' or number of images you can put into the array is
         # determined by the first position in the shape tuple, in this case 1.
