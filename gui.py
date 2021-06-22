@@ -4,21 +4,17 @@ from clock import *
 from model import *
 from webcam import *
 
-# Get screen height to choose size for canvas
-# root = tk.Tk()
-# screensize = root.winfo_screenheight()
-# root.destroy()
-
-
 # ---- Params ---- #
 APP_NAME = 'basketball-scorekeeper'
 
-IPS = {
-    'Home':        'http://192.168.1.164:4747/video?640x480',
+CAMERAS_INDEXES = {
+    'local_0': 0,
+    'local_1': 1,
+    'Amit': 'http://192.168.1.164:4747/video?640x480',
     'HUJI_guests': 'http://172.29.96.149:4747/video?640x480',
-    'Ben':         'http://192.168.31.113:4747/video?640x480'
+    'Ben': 'http://192.168.31.113:4747/video?640x480'
 }
-CAMERAS_INDEXES = (0, IPS['Ben'])
+SELECTED_CAMERAS = (CAMERAS_INDEXES['local_0'], CAMERAS_INDEXES['Ben'])
 
 SKIP = 10
 
@@ -29,10 +25,10 @@ STATE_BALL_MISSED_BASKET = 2
 STATE_BALL_UNDER_BASKET = 3
 STATE_NO_BALL = 4
 
-
 # ---- Teams Enums ---- #
 A = 0
 B = 1
+TEAMS = {A, B}
 
 # ---- Messages ---- #
 TXT_PLAY = 'Play'
@@ -51,7 +47,7 @@ ERROR_TXT_LOAD_WEBCAM_FAILED = "Failed to load camera!"
 ERROR_TXT_LOAD_MODEL_FAILED = "Failed to load model!"
 
 
-def run_GUI(layout: list) -> None:
+def run_gui(layout: list) -> None:
     # Create the Window
     window = sg.Window(APP_NAME, layout)
 
@@ -75,24 +71,21 @@ def run_GUI(layout: list) -> None:
         # Video handling. We only predict one every {SKIP} frames,
         # but still show every frame on the screen
         skip = (skip + 1) % SKIP
-        if webcam_is_loaded[A]:
-            frame_array, image_bytes = capture_frame(cam[A])
-            window["img_webcam_a"].update(data=image_bytes)
+        for team in TEAMS:
+            if webcam_is_loaded[team]:
+                frame_array, image_bytes = cam[team].get_frame()
+                window[f"img_webcam_{team}"].update(data=image_bytes)
 
-            if model_is_loaded and skip == 0:
-                curr_prediction = predict(frame_array, trained_model)
+                if model_is_loaded and skip == 0:
+                    curr_prediction = predict(frame_array, trained_model)
 
-                if curr_prediction == STATE_BALL_IN_BASKET:
-                    cycles_in_basket += 1
-                else:
-                    if cycles_in_basket >= 2:
-                        team_scores[0] += 2
-                        window["txt_team_a_score"].update(team_scores[0])
-                    cycles_in_basket = 0
-
-        if webcam_is_loaded[B]:
-            frame_array, image_bytes = capture_frame(cam[B])
-            window["img_webcam_b"].update(data=image_bytes)
+                    if curr_prediction == STATE_BALL_IN_BASKET:
+                        cycles_in_basket += 1
+                    else:
+                        if cycles_in_basket >= 2:
+                            team_scores[team] += 2
+                            window[f"txt_team_score_{team}"].update(team_scores[0])
+                        cycles_in_basket = 0
 
         # Time handling. Expect update_time() to be called only if clock_is_running
         if clock_is_running and board_clock.update_time():
@@ -118,19 +111,19 @@ def run_GUI(layout: list) -> None:
             team_scores = [0, 0]
 
         # Webcam handling
-        elif event == "btn_load_webcam_a":
-            cam[A] = load_webcam(CAMERAS_INDEXES[A])
-            if cam is not None:
-                window["btn_load_webcam_a"].update(disabled=True)
+        elif event == f"btn_load_webcam_{A}":
+            cam[A] = Webcam(SELECTED_CAMERAS[A])
+            if cam[A].is_webcam_works():
+                window[f"btn_load_webcam_{A}"].update(disabled=True)
                 webcam_is_loaded[A] = True
             else:
                 sg.popup(ERROR_TXT_LOAD_WEBCAM_FAILED, background_color='firebrick')
 
         # Webcam handling
-        elif event == "btn_load_webcam_b":
-            cam[B] = load_webcam(CAMERAS_INDEXES[B])
-            if cam is not None:
-                window["btn_load_webcam_b"].update(disabled=True)
+        elif event == f"btn_load_webcam_{B}":
+            cam[B] = Webcam(SELECTED_CAMERAS[B])
+            if cam[B].is_webcam_works():
+                window[f"btn_load_webcam_{B}"].update(disabled=True)
                 webcam_is_loaded[B] = True
             else:
                 sg.popup(ERROR_TXT_LOAD_WEBCAM_FAILED, background_color='firebrick')
@@ -150,43 +143,3 @@ def run_GUI(layout: list) -> None:
             break
 
     window.close()
-
-
-if __name__ == '__main__':
-    # List of themes:
-    # https://user-images.githubusercontent.com/46163555/70382042-796da500-1923-11ea-8432-80d08cd5f503.jpg
-    sg.theme('DarkBlack1')
-
-    layout = [
-        [
-            sg.Button(key="btn_load_webcam_a", button_text=TXT_LOAD_WEBCAM_A),
-            sg.Button(key="btn_load_webcam_b", button_text=TXT_LOAD_WEBCAM_B),
-            sg.Button(key="btn_load_model", button_text=TXT_LOAD_MODEL)
-        ],
-        [sg.HorizontalSeparator()],
-        [sg.Text(key="txt_time", text=TXT_TIMER_START, font=('Consolas', 30),
-                 size=(59, 1), justification='center')],
-        [sg.HorizontalSeparator()],
-        [
-            sg.Text(key="txt_team_a_score", text=TXT_START_SCORE, font=('Consolas', 45),
-                    size=(19, 1), justification='center'),
-            sg.VerticalSeparator(),
-            sg.Text(key="txt_team_b_score", text=TXT_START_SCORE, font=('Consolas', 45),
-                    size=(19, 1), justification='center')
-        ],
-        [sg.HorizontalSeparator()],
-        [
-            sg.Image(key='img_webcam_a', filename='', size=(640, 480), background_color='gray15'),
-            # sg.VerticalSeparator(),
-            sg.Image(key='img_webcam_b', filename='', size=(640, 480), background_color='gray15')
-        ],
-        [sg.HorizontalSeparator()],
-        [
-            sg.Button(key="btn_play_pause", button_text=TXT_PLAY),
-            sg.Button(key="btn_reset_timer", button_text=TXT_RESET_TIMER, disabled=True),
-            sg.Button(key="btn_reset_score", button_text=TXT_RESET_SCORE, disabled=True),
-            sg.Button(key="btn_settings", button_text=TXT_SETTINGS)
-        ]
-    ]
-
-    run_GUI(layout)
