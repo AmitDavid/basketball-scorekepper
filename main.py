@@ -1,4 +1,8 @@
+from PySimpleGUI import Window
+
 from gui import *
+
+APP_NAME = 'basketball-scorekeeper'
 
 if __name__ == '__main__':
     # List of themes:
@@ -24,7 +28,8 @@ if __name__ == '__main__':
         ],
         [sg.HorizontalSeparator()],
         [
-            sg.Image(key=f"img_webcam_{A}", filename='', size=(640, 480), background_color='gray15'),
+            sg.Image(key=f"img_webcam_{A}", filename='', size=(640, 480),
+                     background_color='gray15'),
             # sg.VerticalSeparator(),
             sg.Image(key=f"img_webcam_{B}", filename='', size=(640, 480), background_color='gray15')
         ],
@@ -37,4 +42,7 @@ if __name__ == '__main__':
         ]
     ]
 
-    run_gui(layout)
+    # Create the Window
+    window = Window(APP_NAME, layout)
+    run_gui(window)
+    window.close()

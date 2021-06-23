@@ -5,8 +5,6 @@ from clock import Clock
 from webcam import Webcam
 
 # ---- Params ---- #
-APP_NAME = 'basketball-scorekeeper'
-
 CAMERAS = {
     'local_0': 0,
     'local_1': 1,
@@ -38,21 +36,14 @@ ERROR_TXT_LOAD_WEBCAM_FAILED = "Failed to load camera!"
 ERROR_TXT_LOAD_MODEL_FAILED = "Failed to load model!"
 
 
-def run_gui(layout: list) -> None:
-    # Create the Window
-    window = sg.Window(APP_NAME, layout)
-
-    camera = [None, None]
+def run_gui(window: sg.Window) -> None:
     trained_model = None
-
-    webcam_is_loaded = [False, False]
-    model_is_loaded = False
+    webcams = [None, None]
     model = [None, None]
+    team_scores = [0, 0]
 
     clock_is_running = False
     board_clock = Clock()
-
-    team_scores = [0, 0]
 
     # Event Loop to process 'events' and get the 'values' of the inputs
     while True:
@@ -60,8 +51,8 @@ def run_gui(layout: list) -> None:
 
         # Video handling.
         for team in TEAMS:
-            if webcam_is_loaded[team]:
-                window[f"img_webcam_{team}"].update(data=camera[team].get_image_bytes())
+            if webcams[team] is not None:
+                window[f"img_webcam_{team}"].update(data=webcams[team].get_image_bytes())
                 score_buffer = model[team].get_score_buffer()
                 if score_buffer:
                     team_scores[team] += score_buffer
@@ -84,21 +75,23 @@ def run_gui(layout: list) -> None:
             window["btn_reset_timer"].update(disabled=True)
 
             clock_is_running = False
-            board_clock = Clock()
+            board_clock.reset()
 
         elif event == "btn_reset_score":
             window["btn_reset_score"].update(disabled=True)
+            window[f"txt_team_score_{A}"].update(TXT_START_SCORE)
+            window[f"txt_team_score_{B}"].update(TXT_START_SCORE)
             team_scores = [0, 0]
 
         # Webcam handling
         elif event in {f"btn_load_webcam_{A}", f"btn_load_webcam_{B}"}:
             team = int(event[-1])
-            camera[team] = Webcam(SELECTED_CAMERAS[team])
-            if camera[team].is_webcam_works():
+            webcams[team] = Webcam(SELECTED_CAMERAS[team])
+            if webcams[team].is_webcam_works():
                 window[f"btn_load_webcam_{team}"].update(disabled=True)
-                webcam_is_loaded[team] = True
-                model[team] = BasketModel(trained_model, camera[team])
+                model[team] = BasketModel(trained_model, webcams[team])
             else:
+                webcams[team] = None
                 sg.popup(ERROR_TXT_LOAD_WEBCAM_FAILED, background_color='firebrick')
 
         # Model handling
@@ -109,12 +102,10 @@ def run_gui(layout: list) -> None:
                 window[f"btn_load_webcam_{B}"].update(disabled=False)
                 window["btn_play_pause"].update(disabled=False)
                 window["btn_load_model"].update(disabled=True)
-                model_is_loaded = True
             else:
+                trained_model = None
                 sg.popup(ERROR_TXT_LOAD_MODEL_FAILED, background_color='firebrick')
 
         # Close the program
         elif event == sg.WIN_CLOSED:
-            break
-
-    window.close()
+            return
