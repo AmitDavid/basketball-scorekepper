@@ -9,20 +9,21 @@ from tensorflow.python.keras.engine.sequential import Sequential
 from webcam import Webcam
 
 # ---- Machine States Enums ---- #
-STATE_BALL_ABOVE_BASKET = 0
+STATE_BALL_IN_FRAME = 0
 STATE_BALL_IN_BASKET = 1
-STATE_BALL_MISSED_BASKET = 2
-STATE_BALL_UNDER_BASKET = 3
-STATE_NO_BALL = 4
+STATE_NO_BALL = 2
 
 # Disable scientific notation for clarity
 np.set_printoptions(suppress=True)
 
 PEN_MODEL = '21_06_14-pen_model.h5'
 GREEN_BALL = '21_06_15-green_ball.h5'
+BASKET_1 = '21_06_23-basket_1.h5'
+BASKET_2 = '21_06_23-basket_2.h5'
 
+i = 0
 
-def load_model(model_path: str = GREEN_BALL) -> {Sequential, None}:
+def load_model(model_path: str = BASKET_2) -> {Sequential, None}:
     try:
         return tensorflow.keras.models.load_model(f'models/{model_path}')
     except (ImportError, IOError) as e:
@@ -50,30 +51,37 @@ class BasketModel:
             pass
 
     def _update(self):
-        # Wait for webcam to lead
+        global i
+        # Wait for webcam to load
         time.sleep(1)
 
         while True:
-            curr_prediction = self._predict()
+            prediction = self._predict()
+            i += 1
+            print(f' {prediction}')
 
-            if curr_prediction == STATE_BALL_IN_BASKET:
-                self._cycles_in_basket += 1
+            if prediction == STATE_BALL_IN_BASKET:
+                self._score_buffer_lock.acquire()
+                self._score_buffer += 2
+                self._score_buffer_lock.release()
             else:
-                if self._cycles_in_basket >= 2:
-                    self._score_buffer_lock.acquire()
-                    self._score_buffer += 2
-                    self._score_buffer_lock.release()
                 self._cycles_in_basket = 0
 
     def _predict(self) -> int:
+        global i
+
         # Preprocess the image and convert array size
-        x = self._webcam.get_frame_array()
-        y = Image.fromarray(x)
-        data = self._preprocess_frame(y)
+        image = Image.fromarray(self._webcam.get_frame_array())
+        data = self._preprocess_frame(image)
 
         # Run model
         answer = self._trained_model.predict(data)
+        print(f'{i}: {answer[0]}', end='')
+
         # Return the index of the most likely prediction
+        if STATE_NO_BALL < 0.9 and STATE_BALL_IN_BASKET > STATE_BALL_IN_FRAME:
+            return STATE_BALL_IN_BASKET
+
         return max((v, i) for i, v in enumerate(answer[0]))[1]
 
     @staticmethod

@@ -9,10 +9,10 @@ CAMERAS = {
     'local_0': 0,
     'local_1': 1,
     'Amit': 'http://192.168.1.164:4747/video?640x480',
-    'HUJI_guests': 'http://172.29.96.149:4747/video?640x480',
+    'HUJI_guests': 'http://172.29.113.83:4747/video?640x480',
     'Ben': 'http://192.168.31.113:4747/video?640x480'
 }
-SELECTED_CAMERAS = (CAMERAS['local_0'], CAMERAS['Amit'])
+SELECTED_CAMERAS = (CAMERAS['local_0'], CAMERAS['HUJI_guests'])
 
 # ---- Teams Enums ---- #
 A = 0
@@ -48,19 +48,6 @@ def run_gui(window: sg.Window) -> None:
     # Event Loop to process 'events' and get the 'values' of the inputs
     while True:
         event, values = window.read(timeout=10)
-
-        # Video handling.
-        for team in TEAMS:
-            if webcams[team] is not None:
-                window[f"img_webcam_{team}"].update(data=webcams[team].get_image_bytes())
-                score_buffer = model[team].get_score_buffer()
-                if score_buffer:
-                    team_scores[team] += score_buffer
-                    window[f"txt_team_score_{team}"].update(team_scores[team])
-
-        # Time handling. Expect update_time() to be called only if clock_is_running
-        if clock_is_running and board_clock.update_time():
-            window["txt_time"].update(board_clock.scoreboard_print())
 
         # GUI buttons
         if event == "btn_play_pause":
@@ -109,3 +96,16 @@ def run_gui(window: sg.Window) -> None:
         # Close the program
         elif event == sg.WIN_CLOSED:
             return
+
+        # Time handling. Expect update_time() to be called only if clock_is_running
+        if clock_is_running and board_clock.update_time():
+            window["txt_time"].update(board_clock.scoreboard_print())
+
+        # Video handling.
+        for team in TEAMS:
+            if webcams[team] is not None:
+                window[f"img_webcam_{team}"].update(data=webcams[team].get_image_bytes())
+                score_buffer = model[team].get_score_buffer()
+                if score_buffer:
+                    team_scores[team] += score_buffer
+                    window[f"txt_team_score_{team}"].update(team_scores[team])
