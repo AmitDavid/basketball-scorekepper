@@ -21,7 +21,6 @@ GREEN_BALL = '21_06_15-green_ball.h5'
 BASKET_1 = '21_06_23-basket_1.h5'
 BASKET_2 = '21_06_23-basket_2.h5'
 
-i = 0
 
 def load_model(model_path: str = BASKET_2) -> {Sequential, None}:
     try:
@@ -51,16 +50,27 @@ class BasketModel:
             pass
 
     def _update(self):
-        global i
         # Wait for webcam to load
         time.sleep(1)
 
+        score_flag = False
+        waiting_counter = 0
+        waiting_limit = 10
+
         while True:
             prediction = self._predict()
-            i += 1
             print(f' {prediction}')
 
-            if prediction == STATE_BALL_IN_BASKET:
+            # Logic: After model decided ball is scored, don't score again until
+            # waited for {waiting_limit} predictions with {STATE_NO_BALL}
+            if score_flag and prediction == STATE_NO_BALL:
+                waiting_counter += 1
+                if waiting_counter == waiting_limit:
+                    score_flag = False
+                    waiting_counter = 0
+
+            if score_flag is False and prediction == STATE_BALL_IN_BASKET:
+                score_flag = True
                 self._score_buffer_lock.acquire()
                 self._score_buffer += 2
                 self._score_buffer_lock.release()
@@ -68,8 +78,6 @@ class BasketModel:
                 self._cycles_in_basket = 0
 
     def _predict(self) -> int:
-        global i
-
         # Preprocess the image and convert array size
         image = Image.fromarray(self._webcam.get_frame_array())
         data = self._preprocess_frame(image)
