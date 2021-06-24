@@ -7,6 +7,8 @@ import numpy as np
 VideoCapture = cv2.VideoCapture
 SAMPLE_RATE = 65  # SAMPLE_RATE > 0
 
+SIZE = (448, 448)
+
 
 class Webcam:
     def __init__(self, index=0):
@@ -33,6 +35,12 @@ class Webcam:
         while True:
             frame_captured, image = self._cam.read()
             if frame_captured:
+                # Crop image to desired size, keep only the center of the frame
+                y, x, c = image.shape
+                start_x = (x - SIZE[0]) // 2
+                start_y = (y - SIZE[1]) // 2
+                image = image[start_y:start_y + SIZE[0], start_x:start_x + SIZE[1], :]
+
                 # Read image from capture device (camera)
                 self._frame_array_lock.acquire()
                 self._frame_array = image

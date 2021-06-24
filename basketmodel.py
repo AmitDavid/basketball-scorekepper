@@ -16,15 +16,14 @@ STATE_NO_BALL = 2
 # Disable scientific notation for clarity
 np.set_printoptions(suppress=True)
 
-PEN_MODEL = '21_06_14-pen_model.h5'
-GREEN_BALL = '21_06_15-green_ball.h5'
-BASKET_1 = '21_06_23-basket_1.h5'
-BASKET_2 = '21_06_23-basket_2.h5'
+SIZE = (224, 224)
+
+MODEL_NAME = '21_06_23-basket_6.h5'
 
 
-def load_model(model_path: str = BASKET_2) -> {Sequential, None}:
+def load_model() -> {Sequential, None}:
     try:
-        return tensorflow.keras.models.load_model(f'models/{model_path}')
+        return tensorflow.keras.models.load_model(f'models/{MODEL_NAME}')
     except (ImportError, IOError) as e:
         return None
 
@@ -56,10 +55,14 @@ class BasketModel:
         score_flag = False
         waiting_counter = 0
         waiting_limit = 10
+        x = 0
 
+        files_numbering = 0
         while True:
             prediction = self._predict()
-            print(f' {prediction}')
+            # f'images/img_{str(files_numbering).zfill(4)}.png'
+            files_numbering += 1
+            print(f'{files_numbering}:\t{prediction}')
 
             # Logic: After model decided ball is scored, don't score again until
             # waited for {waiting_limit} predictions with {STATE_NO_BALL}
@@ -69,7 +72,12 @@ class BasketModel:
                     score_flag = False
                     waiting_counter = 0
 
-            if score_flag is False and prediction == STATE_BALL_IN_BASKET:
+            if prediction == STATE_BALL_IN_BASKET:
+                x += 1
+            else:
+                x = 0
+
+            if score_flag is False and x >= 2:
                 score_flag = True
                 self._score_buffer_lock.acquire()
                 self._score_buffer += 2
@@ -79,18 +87,20 @@ class BasketModel:
 
     def _predict(self) -> int:
         # Preprocess the image and convert array size
+
         image = Image.fromarray(self._webcam.get_frame_array())
         data = self._preprocess_frame(image)
 
         # Run model
         answer = self._trained_model.predict(data)
-        print(f'{i}: {answer[0]}', end='')
+        print(f'{answer[0]}', end='')
+        class_answer = max((v, i) for i, v in enumerate(answer[0]))[1]
 
         # Return the index of the most likely prediction
         if STATE_NO_BALL < 0.9 and STATE_BALL_IN_BASKET > STATE_BALL_IN_FRAME:
             return STATE_BALL_IN_BASKET
 
-        return max((v, i) for i, v in enumerate(answer[0]))[1]
+        return class_answer
 
     @staticmethod
     def _preprocess_frame(frame: Image) -> np.ndarray:
@@ -101,8 +111,7 @@ class BasketModel:
 
         # resize the image to a 224x224 with the same strategy as in TM2:
         # resizing the image to be at least 224x224 and then cropping from the center
-        size = (224, 224)
-        frame = ImageOps.fit(frame, size, Image.ANTIALIAS)
+        frame = ImageOps.fit(frame, SIZE, Image.ANTIALIAS)
 
         # turn the image into a numpy array
         image_array = np.asarray(frame)

@@ -1,6 +1,7 @@
 from PySimpleGUI import Window
 
 from gui import *
+from webcam import SIZE
 
 APP_NAME = 'basketball-scorekeeper'
 
@@ -28,10 +29,10 @@ if __name__ == '__main__':
         ],
         [sg.HorizontalSeparator()],
         [
-            sg.Image(key=f"img_webcam_{A}", filename='', size=(640, 480),
+            sg.Image(key=f"img_webcam_{A}", filename='', size=SIZE,
                      background_color='gray15'),
             # sg.VerticalSeparator(),
-            sg.Image(key=f"img_webcam_{B}", filename='', size=(640, 480), background_color='gray15')
+            sg.Image(key=f"img_webcam_{B}", filename='', size=SIZE, background_color='gray15')
         ],
         [sg.HorizontalSeparator()],
         [
