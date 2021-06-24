@@ -25,14 +25,14 @@ def load_model() -> {Sequential, None}:
     try:
         return tensorflow.keras.models.load_model(f'models/{MODEL_NAME}')
     except (ImportError, IOError) as e:
-        return None
+        pass
+
+    return None
 
 
 class BasketModel:
     def __init__(self, trained_model: Sequential, webcam: Webcam):
         self._works = False
-        self._mirror_image = False
-        self._cycles_in_basket = 0
 
         self._webcam = webcam
         self._trained_model = trained_model
@@ -42,8 +42,8 @@ class BasketModel:
 
         try:
             # Load the model
-            self._thread = Thread(target=self._update, daemon=True)
-            self._thread.start()
+            # self._thread = Thread(target=self._update, daemon=True)
+            # self._thread.start()
             self._works = True
         except (ImportError, IOError, RuntimeError) as e:
             pass
@@ -52,42 +52,37 @@ class BasketModel:
         # Wait for webcam to load
         time.sleep(1)
 
-        score_flag = False
+        waiting_limit = 10  # waiting_limit >= 0
         waiting_counter = 0
-        waiting_limit = 10
-        x = 0
 
-        files_numbering = 0
+        cycles_in_basket_limit = 2  # cycles_in_basket_limit > 0
+        cycles_in_basket = 0
+
         while True:
             prediction = self._predict()
-            # f'images/img_{str(files_numbering).zfill(4)}.png'
-            files_numbering += 1
-            print(f'{files_numbering}:\t{prediction}')
+            print(prediction)
 
-            # Logic: After model decided ball is scored, don't score again until
-            # waited for {waiting_limit} predictions with {STATE_NO_BALL}
-            if score_flag and prediction == STATE_NO_BALL:
-                waiting_counter += 1
-                if waiting_counter == waiting_limit:
-                    score_flag = False
-                    waiting_counter = 0
+            # Logic: If we get {STATE_BALL_IN_BASKET} for {cycles_in_basket_limit} frames in a row,
+            # add score to {self._score_buffer} and wait for {waiting_limit} frames with {STATE_NO_BALL},
+            # only afterward keep looking for new score
+            if waiting_counter == 0:
+                if prediction == STATE_BALL_IN_BASKET:
+                    cycles_in_basket -= 1
+                else:
+                    cycles_in_basket = cycles_in_basket_limit
 
-            if prediction == STATE_BALL_IN_BASKET:
-                x += 1
+                if cycles_in_basket == 0:
+                    self._score_buffer_lock.acquire()
+                    self._score_buffer += 2
+                    self._score_buffer_lock.release()
+                    waiting_counter = waiting_limit
+
             else:
-                x = 0
-
-            if score_flag is False and x >= 2:
-                score_flag = True
-                self._score_buffer_lock.acquire()
-                self._score_buffer += 2
-                self._score_buffer_lock.release()
-            else:
-                self._cycles_in_basket = 0
+                if prediction == STATE_NO_BALL:
+                    waiting_counter -= 1
 
     def _predict(self) -> int:
         # Preprocess the image and convert array size
-
         image = Image.fromarray(self._webcam.get_frame_array())
         data = self._preprocess_frame(image)
 

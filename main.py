@@ -18,14 +18,14 @@ if __name__ == '__main__':
         ],
         [sg.HorizontalSeparator()],
         [sg.Text(key="txt_time", text=TXT_TIMER_START, font=('Consolas', 30),
-                 size=(59, 1), justification='center')],
+                 size=(41, 1), justification='center')],
         [sg.HorizontalSeparator()],
         [
             sg.Text(key=f"txt_team_score_{A}", text=TXT_START_SCORE, font=('Consolas', 45),
-                    size=(19, 1), justification='center'),
+                    size=(13, 1), justification='center', pad=(10, 0)),
             sg.VerticalSeparator(),
             sg.Text(key=f"txt_team_score_{B}", text=TXT_START_SCORE, font=('Consolas', 45),
-                    size=(19, 1), justification='center')
+                    size=(13, 1), justification='center')
         ],
         [sg.HorizontalSeparator()],
         [

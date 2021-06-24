@@ -30,8 +30,10 @@ class Webcam:
         except (ValueError, IOError, RuntimeError) as e:
             pass
 
-    def _update(self) -> None:
+    def _update(self, save_image=False) -> None:
         # Read the next frame from the stream in a different thread
+        files_numbering = 0
+
         while True:
             frame_captured, image = self._cam.read()
             if frame_captured:
@@ -51,6 +53,10 @@ class Webcam:
                 self._image_bytes_lock.acquire()
                 self._image_bytes = temp_image_bytes
                 self._image_bytes_lock.release()
+
+                if save_image:
+                    cv2.imwrite(f'images/img_{str(files_numbering).zfill(5)}.png', image)
+                    files_numbering += 1
 
             # Wait for next read
             time.sleep(1 / SAMPLE_RATE)
