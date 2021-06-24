@@ -1,5 +1,5 @@
 import time
-from threading import Thread, Lock
+from threading import Lock
 
 import numpy as np
 import tensorflow.keras.models
@@ -76,7 +76,6 @@ class BasketModel:
                     self._score_buffer += 2
                     self._score_buffer_lock.release()
                     waiting_counter = waiting_limit
-
             else:
                 if prediction == STATE_NO_BALL:
                     waiting_counter -= 1
