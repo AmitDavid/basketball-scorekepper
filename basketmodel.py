@@ -91,8 +91,8 @@ class BasketModel:
         print(f'{answer[0]}', end='')
         class_answer = max((v, i) for i, v in enumerate(answer[0]))[1]
 
-        # Return the index of the most likely prediction
-        if STATE_NO_BALL < 0.9 and STATE_BALL_IN_BASKET > STATE_BALL_IN_FRAME:
+        # Force STATE_NO_BALL in some cases.
+        if answer[STATE_NO_BALL] < 0.5 and answer[STATE_BALL_IN_BASKET] > (answer[STATE_BALL_IN_FRAME] * 1.2):
             return STATE_BALL_IN_BASKET
 
         return class_answer

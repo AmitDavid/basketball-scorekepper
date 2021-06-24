@@ -8,11 +8,14 @@ VideoCapture = cv2.VideoCapture
 SAMPLE_RATE = 65  # SAMPLE_RATE > 0
 
 SIZE = (448, 448)
+DIFF_THRESHOLD = 3000000
 
 
 class Webcam:
-    def __init__(self, index=0):
+    def __init__(self, name: str, index=0):
+        self._name = name
         self._cam = VideoCapture(index)
+
         self._works = False
         self._thread = None
 
@@ -30,18 +33,19 @@ class Webcam:
         except (ValueError, IOError, RuntimeError) as e:
             pass
 
-    def _update(self, save_image=False) -> None:
+    def _update(self, save_image=True) -> None:
         # Read the next frame from the stream in a different thread
         files_numbering = 0
+        last_image = np.zeros([448, 448, 3], dtype='uint8')
 
         while True:
             frame_captured, image = self._cam.read()
             if frame_captured:
                 # Crop image to desired size, keep only the center of the frame
-                y, x, c = image.shape
+                x, y, c = image.shape  # x > SIZE[0], y > SIZE[1]
                 start_x = (x - SIZE[0]) // 2
                 start_y = (y - SIZE[1]) // 2
-                image = image[start_y:start_y + SIZE[0], start_x:start_x + SIZE[1], :]
+                image = image[start_x:start_x + SIZE[0], start_y:start_y + SIZE[1], :]
 
                 # Read image from capture device (camera)
                 self._frame_array_lock.acquire()
@@ -54,8 +58,13 @@ class Webcam:
                 self._image_bytes = temp_image_bytes
                 self._image_bytes_lock.release()
 
-                if save_image:
-                    cv2.imwrite(f'images/img_{str(files_numbering).zfill(5)}.png', image)
+                # Save image if there is a difference bigger then {DIFF_THRESHOLD} between
+                # it and the saved image
+                if save_image and cv2.absdiff(last_image, image).sum() > DIFF_THRESHOLD:
+                    cv2.imwrite(f'../images_{self._name}/img_{str(files_numbering).zfill(5)}.jpg',
+                                image, (cv2.IMWRITE_JPEG_QUALITY, 90))
+                    print(f'Image saved to folder {self._name}. Image number:\t{files_numbering}')
+                    last_image = image
                     files_numbering += 1
 
             # Wait for next read

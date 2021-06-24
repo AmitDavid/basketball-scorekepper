@@ -73,7 +73,7 @@ def run_gui(window: sg.Window) -> None:
         # Webcam handling
         elif event in {f"btn_load_webcam_{A}", f"btn_load_webcam_{B}"}:
             team = int(event[-1])
-            webcams[team] = Webcam(SELECTED_CAMERAS[team])
+            webcams[team] = Webcam(team, SELECTED_CAMERAS[team])
             if webcams[team].is_webcam_works():
                 window[f"btn_load_webcam_{team}"].update(disabled=True)
                 model[team] = BasketModel(trained_model, webcams[team])
