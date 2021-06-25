@@ -9,10 +9,10 @@ CAMERAS = {
     'local_0': 0,
     'local_1': 1,
     'Amit': 'http://192.168.1.164:4747/video?640x480',
-    'HUJI_guests': 'http://172.29.113.83:4747/video?640x480',
+    'HUJI_guests': 'http://172.29.99.93:4747/video?640x480',
     'Ben': 'http://192.168.31.113:4747/video?640x480'
 }
-SELECTED_CAMERAS = (CAMERAS['local_0'], CAMERAS['Ben'])
+SELECTED_CAMERAS = (CAMERAS['local_1'], CAMERAS['HUJI_guests'])
 
 # ---- Teams Enums ---- #
 A = 0

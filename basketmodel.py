@@ -1,5 +1,5 @@
 import time
-from threading import Lock
+from threading import Lock, Thread
 
 import numpy as np
 import tensorflow.keras.models
@@ -9,16 +9,16 @@ from tensorflow.python.keras.engine.sequential import Sequential
 from webcam import Webcam
 
 # ---- Machine States Enums ---- #
-STATE_BALL_IN_FRAME = 0
-STATE_BALL_IN_BASKET = 1
-STATE_NO_BALL = 2
+# STATE_BALL_IN_FRAME = 0
+STATE_BALL_IN_BASKET = 0
+STATE_NO_BALL = 1
 
 # Disable scientific notation for clarity
 np.set_printoptions(suppress=True)
 
 SIZE = (224, 224)
 
-MODEL_NAME = '21_06_23-basket_6.h5'
+MODEL_NAME = '24_06_23-basket_10.h5'
 
 
 def load_model() -> {Sequential, None}:
@@ -42,8 +42,8 @@ class BasketModel:
 
         try:
             # Load the model
-            # self._thread = Thread(target=self._update, daemon=True)
-            # self._thread.start()
+            self._thread = Thread(target=self._update, daemon=True)
+            self._thread.start()
             self._works = True
         except (ImportError, IOError, RuntimeError) as e:
             pass
@@ -55,7 +55,7 @@ class BasketModel:
         waiting_limit = 10  # waiting_limit >= 0
         waiting_counter = 0
 
-        cycles_in_basket_limit = 2  # cycles_in_basket_limit > 0
+        cycles_in_basket_limit = 1  # cycles_in_basket_limit > 0
         cycles_in_basket = 0
 
         while True:
@@ -86,12 +86,12 @@ class BasketModel:
         data = self._preprocess_frame(image)
 
         # Run model
-        answer = self._trained_model.predict(data)
-        print(f'{answer[0]}', end='')
-        class_answer = max((v, i) for i, v in enumerate(answer[0]))[1]
+        answer = self._trained_model.predict(data)[0]
+        print(f'{answer}', end='')
+        class_answer = max((v, i) for i, v in enumerate(answer))[1]
 
         # Force STATE_NO_BALL in some cases.
-        if answer[STATE_NO_BALL] < 0.5 and answer[STATE_BALL_IN_BASKET] > (answer[STATE_BALL_IN_FRAME] * 1.2):
+        if answer[STATE_BALL_IN_BASKET] >= 0.35:
             return STATE_BALL_IN_BASKET
 
         return class_answer

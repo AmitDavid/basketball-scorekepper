@@ -33,7 +33,7 @@ class Webcam:
         except (ValueError, IOError, RuntimeError) as e:
             pass
 
-    def _update(self, save_image=True) -> None:
+    def _update(self, save_image=False) -> None:
         # Read the next frame from the stream in a different thread
         files_numbering = 0
         last_image = np.zeros([448, 448, 3], dtype='uint8')
@@ -82,3 +82,27 @@ class Webcam:
         while self._image_bytes_lock.locked():
             pass
         return self._image_bytes
+
+
+# For finding camera indexs
+if __name__ == '__main__':
+    is_working = True
+    dev_port = 0
+    working_ports = []
+    available_ports = []
+    while is_working:
+        camera = cv2.VideoCapture(dev_port)
+        if not camera.isOpened():
+            is_working = False
+            print("Port %s is not working." % dev_port)
+        else:
+            is_reading, img = camera.read()
+            w = camera.get(3)
+            h = camera.get(4)
+            if is_reading:
+                print("Port %s is working and reads images (%s x %s)" % (dev_port, h, w))
+                working_ports.append(dev_port)
+            else:
+                print("Port %s for camera ( %s x %s) is present but does not reads." % (dev_port, h, w))
+                available_ports.append(dev_port)
+        dev_port += 1
