@@ -20,3 +20,8 @@ class Clock:
 
     def scoreboard_print(self) -> str:
         return f'{str(self._minutes).zfill(2)}:{str(self._seconds).zfill(2)}'
+
+    def reset(self):
+        self._current_time = datetime.now().second
+        self._seconds = 0
+        self._minutes = 0

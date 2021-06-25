@@ -1,4 +1,9 @@
+from PySimpleGUI import Window
+
 from gui import *
+from webcam import SIZE
+
+APP_NAME = 'basketball-scorekeeper'
 
 if __name__ == '__main__':
     # List of themes:
@@ -13,20 +18,21 @@ if __name__ == '__main__':
         ],
         [sg.HorizontalSeparator()],
         [sg.Text(key="txt_time", text=TXT_TIMER_START, font=('Consolas', 30),
-                 size=(59, 1), justification='center')],
+                 size=(41, 1), justification='center')],
         [sg.HorizontalSeparator()],
         [
             sg.Text(key=f"txt_team_score_{A}", text=TXT_START_SCORE, font=('Consolas', 45),
-                    size=(19, 1), justification='center'),
+                    size=(13, 1), justification='center', pad=(10, 0)),
             sg.VerticalSeparator(),
             sg.Text(key=f"txt_team_score_{B}", text=TXT_START_SCORE, font=('Consolas', 45),
-                    size=(19, 1), justification='center')
+                    size=(13, 1), justification='center')
         ],
         [sg.HorizontalSeparator()],
         [
-            sg.Image(key=f"img_webcam_{A}", filename='', size=(640, 480), background_color='gray15'),
+            sg.Image(key=f"img_webcam_{A}", filename='', size=SIZE,
+                     background_color='gray15'),
             # sg.VerticalSeparator(),
-            sg.Image(key=f"img_webcam_{B}", filename='', size=(640, 480), background_color='gray15')
+            sg.Image(key=f"img_webcam_{B}", filename='', size=SIZE, background_color='gray15')
         ],
         [sg.HorizontalSeparator()],
         [
@@ -37,4 +43,7 @@ if __name__ == '__main__':
         ]
     ]
 
-    run_gui(layout)
+    # Create the Window
+    window = Window(APP_NAME, layout)
+    run_gui(window)
+    window.close()
