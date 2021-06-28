@@ -9,7 +9,6 @@ from tensorflow.python.keras.engine.sequential import Sequential
 from webcam import Webcam
 
 # ---- Machine States Enums ---- #
-# STATE_BALL_IN_FRAME = 0
 STATE_BALL_IN_BASKET = 0
 STATE_NO_BALL = 1
 
@@ -18,7 +17,7 @@ np.set_printoptions(suppress=True)
 
 SIZE = (224, 224)
 
-MODEL_NAME = '24_06_23-basket_10.h5'
+MODEL_NAME = '28_06_23-basket_12.h5'
 
 
 def load_model() -> {Sequential, None}:
@@ -31,7 +30,7 @@ def load_model() -> {Sequential, None}:
 
 
 class BasketModel:
-    def __init__(self, trained_model: Sequential, webcam: Webcam):
+    def __init__(self, trained_model: Sequential, webcam: Webcam, start_thread: bool = True):
         self._works = False
 
         self._webcam = webcam
@@ -39,14 +38,14 @@ class BasketModel:
 
         self._score_buffer = 0
         self._score_buffer_lock = Lock()
-
-        try:
-            # Load the model
-            self._thread = Thread(target=self._update, daemon=True)
-            self._thread.start()
-            self._works = True
-        except (ImportError, IOError, RuntimeError) as e:
-            pass
+        if start_thread:
+            try:
+                # Load the model
+                self._thread = Thread(target=self._update, daemon=True)
+                self._thread.start()
+                self._works = True
+            except (ImportError, IOError, RuntimeError) as e:
+                pass
 
     def _update(self):
         # Wait for webcam to load
@@ -55,12 +54,11 @@ class BasketModel:
         waiting_limit = 10  # waiting_limit >= 0
         waiting_counter = 0
 
-        cycles_in_basket_limit = 1  # cycles_in_basket_limit > 0
+        cycles_in_basket_limit = 2  # cycles_in_basket_limit > 0
         cycles_in_basket = 0
 
         while True:
             prediction = self._predict()
-            print(prediction)
 
             # Logic: If we get {STATE_BALL_IN_BASKET} for {cycles_in_basket_limit} frames in a row,
             # add score to {self._score_buffer} and wait for {waiting_limit} frames with {STATE_NO_BALL},
@@ -87,11 +85,12 @@ class BasketModel:
 
         # Run model
         answer = self._trained_model.predict(data)[0]
-        print(f'{answer}', end='')
         class_answer = max((v, i) for i, v in enumerate(answer))[1]
+        if answer[0] > 0.01:
+            print(f'{answer} {class_answer}')
 
         # Force STATE_NO_BALL in some cases.
-        if answer[STATE_BALL_IN_BASKET] >= 0.35:
+        if answer[STATE_BALL_IN_BASKET] >= 0.65:
             return STATE_BALL_IN_BASKET
 
         return class_answer
