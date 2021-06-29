@@ -90,7 +90,7 @@ class BasketModel:
         # Run model
         answer = self._trained_model.predict(data)[0]
         class_answer = max((v, i) for i, v in enumerate(answer))[1]
-        if answer[STATE_NO_BALL] < 0.9:
+        if answer[STATE_NO_BALL] < 0.7:
             print(f'{answer} {class_answer}')
 
         # Force STATE_NO_BALL in some cases.
