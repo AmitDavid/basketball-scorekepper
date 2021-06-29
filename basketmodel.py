@@ -10,7 +10,9 @@ from webcam import Webcam
 
 # ---- Machine States Enums ---- #
 STATE_BALL_IN_BASKET = 0
-STATE_NO_BALL = 1
+STATE_BALL_UNDER_BASKET = 1
+STATE_NO_BALL = 2
+
 
 # Disable scientific notation for clarity
 np.set_printoptions(suppress=True)
@@ -51,10 +53,10 @@ class BasketModel:
         # Wait for webcam to load
         time.sleep(1)
 
-        waiting_limit = 10  # waiting_limit >= 0
+        waiting_limit = 15  # waiting_limit >= 0
         waiting_counter = 0
 
-        cycles_in_basket_limit = 2  # cycles_in_basket_limit > 0
+        cycles_in_basket_limit = 1  # cycles_in_basket_limit > 0
         cycles_in_basket = 0
 
         while True:
@@ -77,6 +79,8 @@ class BasketModel:
             else:
                 if prediction == STATE_NO_BALL:
                     waiting_counter -= 1
+                if waiting_counter == 0:
+                    print('------------------------------------')
 
     def _predict(self) -> int:
         # Preprocess the image and convert array size
@@ -86,12 +90,12 @@ class BasketModel:
         # Run model
         answer = self._trained_model.predict(data)[0]
         class_answer = max((v, i) for i, v in enumerate(answer))[1]
-        if answer[0] > 0.01:
+        if answer[STATE_NO_BALL] < 0.9:
             print(f'{answer} {class_answer}')
 
         # Force STATE_NO_BALL in some cases.
-        if answer[STATE_BALL_IN_BASKET] >= 0.65:
-            return STATE_BALL_IN_BASKET
+        if 0.85 >= answer[STATE_BALL_IN_BASKET] >= 0.5:
+            return STATE_NO_BALL
 
         return class_answer
 
